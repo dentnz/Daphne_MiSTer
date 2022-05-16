@@ -1,0 +1,3 @@
+[submodule "rtl/mc6809"]
+	path = rtl/mc6809
+	url = https://github.com/cavnex/mc6809.git
