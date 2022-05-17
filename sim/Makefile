@@ -7,7 +7,7 @@ daphne: daphne.exe
 	make -C ./obj_dir -f Vtop_$<
 
 %.mk: top_%.sv
-	verilator -I../ -cc $< --exe main_$(basename $@).cpp -o $(basename $@) \
+	verilator -I.. -I../rtl/mpeg2fpga/rtl/mpeg2 -cc $< --exe main_$(basename $@).cpp -o $(basename $@) \
 		-CFLAGS "${SDL_CFLAGS}" -LDFLAGS "${SDL_LDFLAGS}"
 
 all: daphne

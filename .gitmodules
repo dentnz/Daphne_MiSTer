@@ -1,3 +1,9 @@
 [submodule "rtl/mc6809"]
 	path = rtl/mc6809
 	url = https://github.com/cavnex/mc6809.git
+[submodule "rtl/mpeg2fpga"]
+	path = rtl/mpeg2fpga
+	url = https://github.com/OldRepoPreservation/mpeg2fpga.git
+[submodule "rtl/z80-verilog"]
+	path = rtl/z80-verilog
+	url = https://github.com/Time0o/z80-verilog.git
