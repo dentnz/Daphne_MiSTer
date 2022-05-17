@@ -14,6 +14,8 @@ typedef struct Pixel {  // for SDL texture
     uint8_t r;  // red
 } Pixel;
 
+double sc_time_stamp() { return 0; }
+
 int main(int argc, char* argv[]) {
     Verilated::commandArgs(argc, argv);
     SDL_Surface*    Surf_Display;
