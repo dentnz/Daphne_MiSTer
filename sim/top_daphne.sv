@@ -16,9 +16,33 @@
 `include "sim/motcomp"
 `include "sim/watchdog"
 
+/* max number of bytes in stream.dat mpeg2 stream - total number of "lines" */
+//`define MAX_STREAM_LENGTH 4194304
+`define MAX_STREAM_LENGTH 706819
+
+/* clk at 75 MHz */
+`define CLK_PERIOD 13.3
+
+/* mem_clk at 125 MHz */
+`define MEMCLK_PERIOD 8.0
+
+/* dot_clk at 27 MHz */
+`define VIDCLK_PERIOD 37.0
+
+`undef DEBUG
+//`define DEBUG 1
+
+/* write (lxt) dumpfile of simulation run */
+`undef DEBUG_DUMP
+//`define DEBUG_DUMP 1
+
+// write rgb+sync output to file tvout_0.ppm or tv_out_1.ppm, alternately.
+`undef DUMP_TVOUT
+`define DUMP_TVOUT 1
+
 module top_daphne #(parameter CORDW=10) (  // coordinate width
-    input  wire logic clk_pix,             // pixel clock
-    input  wire logic sim_rst,             // sim reset
+    input  wire logic clk,                 // sys clock
+    input  wire logic rst,                 // sim reset
     output      logic [CORDW-1:0] sdl_sx,  // horizontal SDL position
     output      logic [CORDW-1:0] sdl_sy,  // vertical SDL position
     output      logic sdl_de,              // data enable (low in blanking interval)
@@ -27,58 +51,82 @@ module top_daphne #(parameter CORDW=10) (  // coordinate width
     output      logic [7:0] sdl_b          // 8-bit blue
     );
 
-    // display sync signals and coordinates
-    logic [CORDW-1:0] sx, sy;
-    logic de;
-    simple_480p display_inst (
-        .clk_pix,
-        .rst_pix(sim_rst),
-        .sx,
-        .sy,
-        .hsync(),
-        .vsync(),
-        .de
-    );
+reg   [7:0]rst_ff;
 
-    // define a square with screen coordinates
-    logic square;
-    always_comb begin
-        square = (sx > 220 && sx < 420) && (sy > 140 && sy < 340);
-    end
+// display sync signals and coordinates
+logic [CORDW-1:0] sx, sy;
+logic de;
+simple_480p display_inst (
+    .clk_pix(clk),
+    .rst_pix(rst),
+    .sx,
+    .sy,
+    .hsync(),
+    .vsync(),
+    .de
+);
 
-    // paint colours: white inside square, blue outside
-    logic [3:0] paint_r, paint_g, paint_b;
-    always_comb begin
-        paint_r = (square) ? 4'hF : 4'h1;
-        paint_g = (square) ? 4'hF : 4'h3;
-        paint_b = (square) ? 4'hF : 4'h7;
-    end
+//// define a square with screen coordinates
+//logic square;
+//always_comb begin
+//    square = (sx > 220 && sx < 420) && (sy > 140 && sy < 340);
+//end
 
-    // SDL output (8 bits per colour channel)
-    always_ff @(posedge clk_pix) begin
-        sdl_sx <= sx;
-        sdl_sy <= sy;
-        sdl_de <= de;
-        sdl_r <= {2{paint_r}};  // double signal width from 4 to 8 bits
-        sdl_g <= {2{paint_g}};
-        sdl_b <= {2{paint_b}};
-    end
+//// paint colours: white inside square, blue outside
+logic [3:0] paint_r, paint_g, paint_b;
+//always_comb begin
+//    paint_r = (square) ? 4'hF : 4'h1;
+//    paint_g = (square) ? 4'hF : 4'h3;
+//    paint_b = (square) ? 4'hF : 4'h7;
+//end
 
+// SDL output (8 bits per colour channel)
+always_ff @(posedge clk) begin
+    sdl_sx <= sx;
+    sdl_sy <= sy;
+    sdl_de <= de;
+    sdl_r <= {2{paint_r}};  // double signal width from 4 to 8 bits
+    sdl_g <= {2{paint_g}};
+    sdl_b <= {2{paint_b}};
+end
 
-wire clk     = clk_pix;
-wire mem_clk = clk_pix;
-wire dot_clk = clk_pix;
-wire rst     = sim_rst;
+/*
+* read mpeg2 clip from file "stream.dat"
+*/
 
-wire  [7:0] stream_data = 0;
-wire        stream_valid = 1;
+integer     i;
+reg   [7:0] stream[0:`MAX_STREAM_LENGTH];
+reg         resetff;
+
+initial begin
+    $readmemh("stream.dat", stream, 0, `MAX_STREAM_LENGTH);
+    rst_ff       = 8'b0;
+    i            = 0;
+    stream_data  = 0;
+    stream_valid = 0;
+    reg_dta_in   = 32'd0;
+    reg_addr     = 4'b0;
+    reg_wr_en    = 0;
+    reg_rd_en    = 0;
+end
+
+assign resetff = rst_ff[7];
+
+always @(posedge clk)
+    rst_ff <= {rst_ff[6:0], 1'b1};
+
+reg  mem_clk = clk;
+wire dot_clk = clk;
+
+reg   [7:0] stream_data;
+reg         stream_valid;
 
 // register file access - not sure what this is for yet
-wire  [3:0] reg_addr;
-wire [31:0] reg_dta_in;
-wire        reg_wr_en;
+reg   [3:0] reg_addr;
+reg  [31:0] reg_dta_in;
+reg         reg_wr_en;
 wire [31:0] reg_dta_out;
-wire        reg_rd_en;
+reg         reg_rd_en;
 
 wire        busy;
 wire        error;
@@ -107,15 +155,31 @@ wire        mem_res_wr_full;
 
 wire [32:0] testpoint;
 
+always @(posedge clk) begin
+    if (~resetff) begin
+        i <= 0;
+        stream_data <= 0;
+        stream_valid <= 1'b0;
+    end else if (~busy && (i < `MAX_STREAM_LENGTH) && (^stream [i] !== 1'bx)) begin
+        i <= i + 1;
+        stream_data <= stream [i];
+        $display(stream_data);
+        stream_valid <= 1'b1;
+    end else begin
+        i <= i;
+        stream_data <= 0;
+        stream_valid <= 1'b0;
+    end
+end
+
 /*
  * mpeg2 decoder
  */
-
-    mpeg2video mpeg2 (
+mpeg2video mpeg2 (
     .clk(clk),
     .mem_clk(mem_clk),
     .dot_clk(dot_clk),
-    .rst(rst),
+    .rst(resetff),
     .stream_data(stream_data),
     .stream_valid(stream_valid),
     .reg_addr(reg_addr),
@@ -148,6 +212,28 @@ wire [32:0] testpoint;
     .testpoint(testpoint),
     .testpoint_dip(4'h0),
     .testpoint_dip_en(1'b1)
-    );
+);
+
+reg [7:0] pixel_count = 0;
+always @(posedge dot_clk) begin
+    if (pixel_en && ((^r === 1'bx) || (^g === 1'bx) || (^g === 1'bx))) begin
+        paint_r = 4'hF;
+        paint_g = 4'h0;
+        paint_b = 4'h0;
+    end else if (pixel_en) begin
+        paint_r = r;
+        paint_g = g;
+        paint_b = b;
+    end else if (v_sync || h_sync) begin
+        paint_r = 4'h0;
+        paint_g = 4'h0;
+        paint_b = 4'h0;
+    end else begin
+        paint_r = 4'h4;
+        paint_g = 4'h4;
+        paint_b = 4'h4;
+    end
+    pixel_count <= pixel_count + 1;
+end
 
 endmodule

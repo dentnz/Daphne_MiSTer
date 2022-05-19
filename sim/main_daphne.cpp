@@ -1,8 +1,10 @@
 #include <stdio.h>
 #include <SDL.h>
 #include <verilated.h>
+#include <tbclock.h>
 #include "Vtop_daphne.h"
 
+// stream.dat res = 160x120
 // screen dimensions
 const int H_RES = 640;
 const int V_RES = 480;
@@ -19,7 +21,6 @@ double sc_time_stamp() { return 0; }
 int main(int argc, char* argv[]) {
     Verilated::commandArgs(argc, argv);
     SDL_Surface*    Surf_Display;
-
 
     int numdrivers = SDL_GetNumRenderDrivers();
 
@@ -69,13 +70,13 @@ int main(int argc, char* argv[]) {
     Vtop_daphne* top = new Vtop_daphne;
 
     // reset
-    top->sim_rst = 1;
-    top->clk_pix = 0;
+    top->rst = 1;
+    top->clk = 0;
     top->eval();
-    top->clk_pix = 1;
+    top->clk = 1;
     top->eval();
-    top->sim_rst = 0;
-    top->clk_pix = 0;
+    top->rst = 0;
+    top->clk = 0;
     top->eval();
 
     // initialize frame rate
@@ -84,10 +85,10 @@ int main(int argc, char* argv[]) {
 
     // main loop
     while (1) {
-        // cycle the clock
-        top->clk_pix = 1;
+        // cycle the main clock
+        top->clk = 1;
         top->eval();
-        top->clk_pix = 0;
+        top->clk = 0;
         top->eval();
 
         // update pixel if not in blanking interval

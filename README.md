@@ -39,3 +39,8 @@ https://github.com/Time0o/z80-verilog.git
 Schematic/owners manual:
 http://www.dragons-lair-project.com/tech/schematics/Dragons_Lair_Schematic_Package_Supplement_Europe.pdf
 
+## Simulation
+
+- Install verilator
+- Install sdl2
+- Put a mpg2 file into
