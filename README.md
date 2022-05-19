@@ -41,6 +41,16 @@ http://www.dragons-lair-project.com/tech/schematics/Dragons_Lair_Schematic_Packa
 
 ## Simulation
 
-- Install verilator
-- Install sdl2
-- Put a mpg2 file into
+- If running on Windows, use Virtualbox to create an Ubuntu linux box. Log into this box non-headless.
+- Install verilator - may need to use an alternative verilator with scheduling support allowing multiple
+  clocks... more to come.
+- Install sdl2 through apt
+- If running on Windows, install Xming. Get IP address.
+- Put a mpg2 file into sim folder, rename to test.mpg
+- make stream.dat
+- Determine the total number of lines - this is your stream.dat byte count
+- Update top_daphne.sv to use this byte count
+- make clean
+- make
+- If running on Windows, export DISPLAY=<xming_ip_address>:0.0
+- obj_dir/daphne to start simulation

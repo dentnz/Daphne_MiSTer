@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <SDL.h>
 #include <verilated.h>
-#include <tbclock.h>
 #include "Vtop_daphne.h"
 
 // stream.dat res = 160x120
