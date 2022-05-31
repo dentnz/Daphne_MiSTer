@@ -7,3 +7,6 @@
 [submodule "rtl/z80-verilog"]
 	path = rtl/z80-verilog
 	url = https://github.com/Time0o/z80-verilog.git
+[submodule "cpp/daphne"]
+	path = cpp/daphne
+	url = https://github.com/libretro/daphne.git
