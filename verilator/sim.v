@@ -1,42 +1,75 @@
-module top(VGA_R,VGA_B,VGA_G,VGA_HS,VGA_VS,VGA_DE,VGA_HB,VGA_VB,CE_PIXEL,AUDIO_L,AUDIO_R,ps2_key,joystick_0,joystick_1,joystick_2,joystick_3,menu,reset,clk_sys,ioctl_upload,ioctl_download,ioctl_addr,ioctl_dout,ioctl_din,ioctl_index,ioctl_wait,ioctl_wr,led5,led6,stream_dat_count,testpoint);
+module top(
+    VGA_R,
+    VGA_B,
+    VGA_G,
+    VGA_HS,
+    VGA_VS,
+    VGA_DE,
+    VGA_HB,
+    VGA_VB,
+    CE_PIXEL,
+    AUDIO_L,
+    AUDIO_R,
+    ps2_key,
+    joystick_0,
+    joystick_1,
+    joystick_2,
+    joystick_3,
+    menu,
+    reset,
+    clk_sys,
+    ioctl_upload,
+    ioctl_download,
+    ioctl_addr,
+    ioctl_dout,
+    ioctl_din,
+    ioctl_index,
+    ioctl_wait,
+    ioctl_wr,
+    led5,
+    led6,
+    stream_dat_count,
+    EXT_BUS,
+    perform_debug_test
+);
+    input clk_sys;
+    input reset;
 
-   input clk_sys;
-   input reset;
+    output [7:0] VGA_R;
+    output [7:0] VGA_G;
+    output [7:0] VGA_B;
 
-   output [7:0] VGA_R;
-   output [7:0] VGA_G;
-   output [7:0] VGA_B;
-   
-   output VGA_HS;
-   output VGA_VS;
-   output VGA_DE;
-   output VGA_HB;
-   output VGA_VB;
-   output CE_PIXEL;
+    output VGA_HS;
+    output VGA_VS;
+    output VGA_DE;
+    output VGA_HB;
+    output VGA_VB;
+    output CE_PIXEL;
 
-   output led5;
-   output led6;
-   output [33:0] testpoint;
-   
-   output [15:0] AUDIO_L;
-   output [15:0] AUDIO_R;
-   output [31:0] stream_dat_count;
+    output led5;
+    output led6;
+    output [35:0] EXT_BUS;
 
-   input        ioctl_upload;
-   input        ioctl_download;
-   input        ioctl_wr;
-   input [24:0] ioctl_addr;
-   input  [7:0] ioctl_dout;
-   output [7:0] ioctl_din;
-   input  [7:0] ioctl_index;
-   output  reg  ioctl_wait=1'b0;
-   
-   input reg [10:0] ps2_key;
-   input reg [31:0] joystick_0;
-   input reg [31:0] joystick_1;
-   input reg [31:0] joystick_2;
-   input reg [31:0] joystick_3;
-   input reg menu;
+    output [15:0] AUDIO_L;
+    output [15:0] AUDIO_R;
+    output [31:0] stream_dat_count;
+
+    input        ioctl_upload;
+    input        ioctl_download;
+    input        ioctl_wr;
+    input [24:0] ioctl_addr;
+    input  [7:0] ioctl_dout;
+    output [7:0] ioctl_din;
+    input  [7:0] ioctl_index;
+    output  reg  ioctl_wait=1'b0;
+
+    input reg [10:0] ps2_key;
+    input reg [31:0] joystick_0;
+    input reg [31:0] joystick_1;
+    input reg [31:0] joystick_2;
+    input reg [31:0] joystick_3;
+    input reg menu;
+    input reg perform_debug_test;
 
 ////////////////////////////  HPS I/O  //////////////////////////////////
 
@@ -57,8 +90,6 @@ wire [7:0] red;
 wire [7:0] green;
 wire [7:0] blue;
 wire hblank, vblank;
-wire [7:0] gigatron_output_port;
-wire [7:0] gigatron_extended_output_port;
 
 wire famicom_pulse;
 wire famicom_latch;
@@ -83,18 +114,32 @@ ripple_clock_divider clk_divider(
 
 wire pixel_en;
 
+reg perform_debug_test_out = 0;
+// Clk_sys here is actually going to become mem_clk, since it's the fastest of the three
+always @(posedge clk_sys) begin
+    reg perform_debug_test_old;
+
+    if (reset) begin
+        perform_debug_test_old <= 0;
+        perform_debug_test_out <= 0;
+    end else begin
+        perform_debug_test_old <= perform_debug_test;
+        perform_debug_test_out <= 0;
+        if (~perform_debug_test_old && perform_debug_test) begin
+            perform_debug_test_out <= 1;
+        end
+    end
+end
+
 // verilator lint_off PINMISSING
-Gigatron_Shell gigatron_shell(
+daphne_shell daphne_shell_inst(
     .mem_clk(clk_sys),      // 100Mhz MEM clock
     .vga_clk(clk_vid),      // 24Mhz VGA clock
     .clk(clk),				// 50mhz clock
     .reset(reset),
     .run(1'b1),
 
-
-    .gigatron_output_port(gigatron_output_port),
-    //.gigatron_extended_output_port(gigatron_extended_output_port),
-    
+    .perform_debug_test(perform_debug_test_out),
     //
     // These signals are from the Famicom serial game controller.
     //
@@ -102,8 +147,7 @@ Gigatron_Shell gigatron_shell(
     .famicom_latch(famicom_latch), // output
     .famicom_data(famicom_data), // input
 
-    //// Raw VGA signals from the Gigatron
-
+    // VGA output
     .hsync(hsync),
     .vsync(vsync),
     .red(red),
@@ -128,19 +172,13 @@ Gigatron_Shell gigatron_shell(
     ////    .framebuffer_write_address(framebuffer_write_address),
     ////    .framebuffer_write_data(framebuffer_write_data),
 
-    //// BlinkenLights
-    ////    .led5(gigatron_led5),
-    ////    .led6(gigatron_led6),
-    ////    .led7(gigatron_led7),
-    ////    .led8(gigatron_led8),
-
 	// mpeg2 Debug
 	.led5(led5),
 	.led6(led6),
 	.stream_dat_count(stream_dat_count),
-    .testpoint(testpoint),
+	.EXT_BUS(EXT_BUS),
 
-    //// 16 bit LPCM audio output from the Gigatron.
+    //// 16 bit LPCM audio output
     .audio_dac(AUDIO_L),
     ////    // Digital volume control with range 0 - 11.
     .digital_volume_control(4'd11),

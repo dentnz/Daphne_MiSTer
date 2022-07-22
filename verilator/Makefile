@@ -44,19 +44,27 @@ endif
 CFLAGS += $(CC_OPT) $(CC_DEFINE) -Iimgui
 LDFLAGS = $(LIBS)
 EXE = ./obj_dir/Vtop
-V_OPT = -O3 --x-assign fast --x-initial fast --noassert -I.. -I../rtl -I../rtl/mpeg2fpga/rtl/mpeg2 -Wno-WIDTH -Wno-MODDUP -Wno-STMTDLY -Wno-CASEX
+V_OPT = -O3 --x-assign fast --x-initial fast --noassert \
+    -I.. \
+    -I../rtl \
+    -I../rtl/ldp \
+    -I../rtl/ldp/codec \
+    -I../rtl/mpeg2fpga/rtl/mpeg2 \
+    -I../cpp/Main_MiSTer/ \
+    -I../cpp/Main_MiSTer/support/ \
+    -Wno-WIDTH -Wno-MODDUP -Wno-STMTDLY -Wno-CASEX
 #CC_OPT = -O
 #V_OPT = 
 #CC_OPT =   
 
-V_SRC = sim.v gigatron_shell.sv daphne.sv
+V_SRC = sim.v daphne_shell.sv daphne.sv ../rtl/ldp/vldp.sv
 
 C_SRC = \
 sim/sim_bus.cpp sim/sim_clock.cpp sim/sim_console.cpp sim/sim_video.cpp sim/sim_input.cpp \
 sim/sim_audio.cpp \
 sim/imgui/imgui_impl_sdl.cpp sim/imgui/imgui_impl_opengl2.cpp \
 sim/imgui/imgui_draw.cpp sim/imgui/imgui_widgets.cpp sim/imgui/imgui_tables.cpp \
-sim/imgui/ImGuiFileDialog.cpp sim/imgui/imgui.cpp sim_main.cpp 
+sim/imgui/ImGuiFileDialog.cpp sim/imgui/imgui.cpp sim_main.cpp
 VOUT = obj_dir/Vtop.cpp
 
 all: $(EXE)

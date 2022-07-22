@@ -22,6 +22,9 @@
 #include "../imgui/imgui_memory_editor.h"
 #include "../imgui/ImGuiFileDialog.h"
 
+// Include Main_MiSTer-side files required for simulation
+#include "../../cpp/Main_MiSTer/support/daphne.h"
+
 #include <iostream>
 #include <fstream>
 using namespace std;
@@ -34,7 +37,7 @@ bool busy_led = 0;
 bool error_led = 0;
 int batchSize = 150000;
 bool single_step = 0;
-bool multi_step = 0;
+bool multi_step = 1;
 int multi_step_amount = 1024;
 
 // Debug GUI 
@@ -92,6 +95,7 @@ double sc_time_stamp() {	// Called by $time in Verilog.
 
 vluint64_t stream_dat_count = 0;	// count in stream.dat
 vluint64_t testpoint = 0;
+vluint64_t EXT_BUS = 0;
 
 int clk_sys_freq = 100000000;
 SimClock clk_sys(1);
@@ -145,17 +149,25 @@ int verilate() {
 		busy_led = top->led5;
 		error_led = top->led6;
 		stream_dat_count = top->stream_dat_count;
-		testpoint = top->testpoint;
+		EXT_BUS = top->EXT_BUS;
 
 		// Output pixels on rising edge of pixel clock
-		if (clk_sys.IsRising() && top->CE_PIXEL ) {
+		if (clk_sys.IsRising() && top->CE_PIXEL) {
 			uint32_t colour = 0xFF000000 | top->VGA_B << 16 | top->VGA_G << 8 | top->VGA_R;
 			video.Clock(top->VGA_HB, top->VGA_VB, top->VGA_HS, top->VGA_VS, colour);
 		}
 
 		if (clk_sys.IsRising()) {
 			main_time++;
+            if (main_time == 600000) {
+                printf("trying to test trigger\n");
+                top->perform_debug_test = 1;
+            }
+            if (main_time > 600000) {
+                top->perform_debug_test = 0;
+            }
 		}
+
 		return 1;
 	}
 
@@ -364,7 +376,7 @@ if (ImGui::Button("Load Tape"))
 		ImGui::SliderInt("Rotate", &video.output_rotate, -1, 1); ImGui::SameLine();
 		ImGui::Checkbox("Flip V", &video.output_vflip);
 		ImGui::Text("main_time: %d frame_count: %d sim FPS: %f Stream.dat: %d", main_time, video.count_frame, video.stats_fps, stream_dat_count);
-		ImGui::Text("testpoint: %d", &testpoint);
+		ImGui::Text("EXT_BUS: %d", &EXT_BUS);
 
 		// Draw VGA output
 		ImGui::Image(video.texture_id, ImVec2(video.output_width * VGA_SCALE_X, video.output_height * VGA_SCALE_Y));
@@ -428,7 +440,7 @@ fprintf(stderr,"filePath: %s\n",filePath.c_str());
 
 		// Pass inputs to sim
 
-		top->menu = input.inputs[input_menu];
+		//top->menu = input.inputs[input_menu];
 
 		top->joystick_0 = 0;
 		for (int i = 0; i < input.inputCount; i++)

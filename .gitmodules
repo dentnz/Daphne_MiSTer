@@ -10,3 +10,6 @@
 [submodule "cpp/daphne"]
 	path = cpp/daphne
 	url = https://github.com/libretro/daphne.git
+[submodule "cpp/verilator-1"]
+	path = cpp/verilator-1
+	url = https://github.com/antmicro/verilator-1.git
