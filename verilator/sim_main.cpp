@@ -111,6 +111,7 @@ SimAudio audio(clk_sys_freq, false);
 void resetSim() {
 	main_time = 0;
 	top->reset = 1;
+	top->EXT_BUS = 0;
 	clk_sys.Reset();
 }
 
@@ -161,10 +162,15 @@ int verilate() {
 			main_time++;
             if (main_time == 600000) {
                 printf("trying to test trigger\n");
+                printf("ext bus %lu\n", top->EXT_BUS);
                 top->perform_debug_test = 1;
             }
             if (main_time > 600000) {
                 top->perform_debug_test = 0;
+            }
+
+            if (main_time == 610000 && main_time < 610002) {
+                printf("ext bus %lu\n", top->EXT_BUS);
             }
 		}
 
@@ -376,7 +382,7 @@ if (ImGui::Button("Load Tape"))
 		ImGui::SliderInt("Rotate", &video.output_rotate, -1, 1); ImGui::SameLine();
 		ImGui::Checkbox("Flip V", &video.output_vflip);
 		ImGui::Text("main_time: %d frame_count: %d sim FPS: %f Stream.dat: %d", main_time, video.count_frame, video.stats_fps, stream_dat_count);
-		ImGui::Text("EXT_BUS: %d", &EXT_BUS);
+		ImGui::Text("EXT_BUS: %lu", EXT_BUS);
 
 		// Draw VGA output
 		ImGui::Image(video.texture_id, ImVec2(video.output_width * VGA_SCALE_X, video.output_height * VGA_SCALE_Y));

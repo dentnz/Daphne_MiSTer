@@ -82,8 +82,8 @@ wire gigatron_famicom_data;
 
 daphne daphne_inst(
     .mem_clk(mem_clk),		// 100hz clock
-    .sys_clk(clk),			// 50Mhz
     .dot_clk(vga_clk),		// 25Mhz VGA clock from the PLL
+    .sys_clk(clk),			// 50Mhz
     .rst(reset),
 
     //

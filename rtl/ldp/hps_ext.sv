@@ -29,10 +29,13 @@ initial begin
 end
 
 assign EXT_BUS[15:0] = io_dout;
-wire [15:0] io_din = EXT_BUS[31:16];
+//wire [15:0] io_din = EXT_BUS[31:16];
+reg  [15:0] io_din;
 assign EXT_BUS[32] = dout_en;
-wire io_strobe = EXT_BUS[33];
-wire io_enable = EXT_BUS[34];
+//wire io_strobe = EXT_BUS[33];
+//wire io_enable = EXT_BUS[34];
+wire io_strobe = 1;
+wire io_enable = 1;
 
 localparam EXT_CMD_MIN = CD_GET;
 localparam EXT_CMD_MAX = CD_SET;
@@ -58,9 +61,13 @@ always @(posedge sys_clk) begin
 		if(cmd == 'h35) cd_get <= 1;
 	end
 	else if(io_strobe) begin
-
 		io_dout <= 0;
 		if(~&byte_cnt) byte_cnt <= byte_cnt + 1'd1;
+		// TODO this is only required for sim...
+		if(byte_cnt >= 1023) byte_cnt <= 0;
+		// Simulate a cd_get from the HPS via ext
+		if(byte_cnt == 1000) io_din <= CD_GET;
+		$display("io_dout %lu", io_dout);
 
 		if(byte_cnt == 0) begin
 			cmd <= io_din;
@@ -68,23 +75,24 @@ always @(posedge sys_clk) begin
 			if(io_din == CD_GET) io_dout <= cd_req;
 		end else begin
 			case(cmd)
-				CD_GET:
-					if(!byte_cnt[9:3]) begin
-						case(byte_cnt[2:0])
+				CD_GET: begin
+                    if(!byte_cnt[9:3]) begin
+                        case(byte_cnt[2:0])
 							1: io_dout <= cd_in[15:0];
 							2: io_dout <= cd_in[31:16];
 							3: io_dout <= cd_in[47:32];
 						endcase
 					end
-
-				CD_SET:
-					if(!byte_cnt[9:3]) begin
+                end
+				CD_SET: begin
+                    if(!byte_cnt[9:3]) begin
 						case(byte_cnt[2:0])
 							1: cd_out[15:0]  <= io_din;
 							2: cd_out[31:16] <= io_din;
 							3: cd_out[47:32] <= io_din;
 						endcase
 					end
+                end
 			endcase
 		end
 	end
@@ -93,12 +101,14 @@ end
 reg [47:0] cd_in;
 reg [47:0] cd_out;
 reg cd_put, cd_get;
+reg next_sector_req;
 
 always @(posedge sys_clk) begin
 	reg reset_old;
 	reg frame_search_req_old;
 	reg play_req_old;
 	reg pause_req_old;
+	reg next_sector_req_old;
 	cd_put <= 0;
 
 	reset_old <= reset;
@@ -128,6 +138,14 @@ always @(posedge sys_clk) begin
 		cd_put <= 1;
 	end
 
+    //  Fetch next sector
+    next_sector_req_old <= next_sector_req;
+    if (!next_sector_req_old && next_sector_req) begin
+        $display("Next sector req going to cd_in");
+        cd_in  <= { 16'h36 };
+        cd_put <= 1;
+    end
+
 // @todo HPS response messaging
 /*
 	if (cd_get) begin
@@ -146,7 +164,7 @@ reg debug_test = 0;
 // Fast clock
 always @(posedge mem_clk) begin
     if (perform_debug_test == 1) begin
-        $display("Got the message in shell");
+        $display("Got the message in ext");
         sync_perform_debug_test <= 1;
     end
 
@@ -198,7 +216,7 @@ always @(posedge sys_clk) begin
     end else if (~mpeg2_busy) begin
         if (is_playing) begin
             // TODO needs to be pulling from a fifo at this point
-            stream_byte_index <= stream_byte_index + 1;
+            //stream_byte_index <= stream_byte_index + 1;
             stream_data <= mpeg_fifo_dout;
             stream_valid <= 1'b1;
         end else begin
@@ -216,6 +234,28 @@ always @(posedge sys_clk) begin
     end
 end
 
+// Keep filling the fifo buffer via ext messaging
+reg [23:0] sector_size = 24'd1024;
+reg [23:0] mpeg2_fifo_sector_limit = 24'd7168;
+reg [3:0]  mpeg_streamer_state;
+always @(posedge sys_clk) begin
+    if (~RESET_N) begin
+        next_sector_req <= 0;
+        stream_byte_index <= 0;
+        mpeg_streamer_state <= 0;
+    end else begin
+        // TODO this overflow might come in at mem clk speed
+        if (~mpeg_fifo_wr_overflow && is_playing && stream_byte_index < mpeg2_fifo_sector_limit && next_sector_req == 0) begin
+            // Add the sector to our counts
+            $display("Requesting sector");
+            stream_byte_index <= stream_byte_index + sector_size;
+            next_sector_req <= 1;
+        end else if (next_sector_req == 1) begin
+            // Wait for the sector to transfer
+        end
+    end
+end
+
 reg  [31:0] mpeg_fifo_din;
 reg   [7:0] mpeg_fifo_dout;
 reg         mpeg_fifo_rd_en;
@@ -226,23 +266,25 @@ wire        mpeg_fifo_wr_almost_full;
 wire        mpeg_fifo_rd_empty;
 wire        mpeg_fifo_rd_valid;
 
+
+// Dta_width squared gives you fifo size.. need to determine if that's bytes or kilobytes
 fifo_dc
 #(
 .addr_width(9'd8),
-.dta_width(9'd32),
+.dta_width(9'd8),
 .prog_thresh(9'd1)
 )
 mpeg_fifo
 (
-    .rst(reset),
-    .wr_clk(mem_clk),
+    .rst(RESET_N),
+    .wr_clk(sys_clk),
     .din(mpeg_fifo_din),
     .wr_en(mpeg_fifo_wr_en),
     .full(mpeg_fifo_wr_full),
     .wr_ack(),
     .overflow(mpeg_fifo_wr_overflow),
     .prog_full(mpeg_fifo_wr_almost_full),
-    .rd_clk(mem_clk),
+    .rd_clk(sys_clk),
     .dout(mpeg_fifo_dout),
     .rd_en(mpeg_fifo_rd_en),
     .empty(mpeg_fifo_rd_empty),

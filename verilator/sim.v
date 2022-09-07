@@ -126,6 +126,7 @@ always @(posedge clk_sys) begin
         perform_debug_test_old <= perform_debug_test;
         perform_debug_test_out <= 0;
         if (~perform_debug_test_old && perform_debug_test) begin
+            $display("trigger at sim");
             perform_debug_test_out <= 1;
         end
     end

@@ -79,6 +79,8 @@ mpeg mpeg_inst(
 /* verilator lint_off PINMISSING */
 hps_ext hps_ext_inst(
     .reset(rst),
+    .mem_clk(mem_clk),
+    .sys_clk(sys_clk),
     .RESET_N(RESET_N),
     .stream_data(stream_data),
     .frame_search_req(frame_search_req),
