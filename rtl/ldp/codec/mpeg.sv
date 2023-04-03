@@ -21,7 +21,7 @@ module mpeg(
 
     input   wire  [7:0] stream_data,
     input   wire        stream_valid,
-    output  wire [35:0] EXT_BUS
+    inout   wire [35:0] EXT_BUS
 );
 
 wire [31:0] reg_dta_out;

@@ -1,4 +1,4 @@
-module Gigatron_Shell (
+/*module Gigatron_Shell (
     // MEM 100Mhz clock
     input       mem_clk,
 
@@ -148,3 +148,4 @@ module Gigatron_Shell (
   );
 
 endmodule
+*/

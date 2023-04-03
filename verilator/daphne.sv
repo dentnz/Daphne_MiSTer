@@ -49,7 +49,10 @@ module daphne (
 	output		audio_dac,
 	input		digital_volume_control,
 	input       perform_debug_test,
-	output      reg [35:0] EXT_BUS
+	input       perform_io_strobe,
+	inout       reg [35:0] EXT_BUS,
+	input       reg [35:0] EXT_BUS_IN,
+	output      reg [35:0] EXT_BUS_OUT
 );
 
 reg RESET_N = 1;
@@ -86,9 +89,12 @@ vldp vldp_inst(
 
     // mem_clk synced
     .perform_debug_test(perform_debug_test),
+    .perform_io_strobe(perform_io_strobe),
 
     .stream_dat_count(stream_dat_count),
-    .EXT_BUS(EXT_BUS)
+    .EXT_BUS(EXT_BUS),
+    .EXT_BUS_IN(EXT_BUS_IN),
+    .EXT_BUS_OUT(EXT_BUS_OUT)
 );
 /* verilator lint_on PINMISSING */
 

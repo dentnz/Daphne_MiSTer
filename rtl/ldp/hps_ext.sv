@@ -5,8 +5,11 @@ module hps_ext
 	input             sys_clk,
 	input             mem_clk,
 	inout      [35:0] EXT_BUS,
+	input      [35:0] EXT_BUS_IN,
+	output     [35:0] EXT_BUS_OUT,
 
 	input             perform_debug_test,
+	input             perform_io_strobe,
 	input	          frame_search_req,
 	input      [31:0] frame_search,
 	input			  play_req,
@@ -29,13 +32,14 @@ initial begin
 end
 
 assign EXT_BUS[15:0] = io_dout;
+assign EXT_BUS_OUT[15:0] = io_dout;
+// TODO check if we are verilating here
 //wire [15:0] io_din = EXT_BUS[31:16];
-reg  [15:0] io_din;
+wire [15:0] io_din = EXT_BUS_IN[31:16];
 assign EXT_BUS[32] = dout_en;
-//wire io_strobe = EXT_BUS[33];
-//wire io_enable = EXT_BUS[34];
-wire io_strobe = 1;
-wire io_enable = 1;
+assign EXT_BUS_OUT[32] = dout_en;
+wire io_strobe = EXT_BUS[33] | EXT_BUS_IN[33];
+wire io_enable = EXT_BUS[34] | EXT_BUS_IN[34];
 
 localparam EXT_CMD_MIN = CD_GET;
 localparam EXT_CMD_MAX = CD_SET;
@@ -44,39 +48,57 @@ localparam CD_GET = 'h34;
 localparam CD_SET = 'h35;
 
 reg [15:0] io_dout;
+reg [15:0] io_din_old;
+reg [15:0] cmd_old;
+
 reg        dout_en = 0;
-reg  [9:0] byte_cnt;
+reg        force_io_enable = 0;
+reg  [9:0] byte_cnt = 0;
+reg [15:0] cmd = 0;
 
 always @(posedge sys_clk) begin
-	reg [15:0] cmd;
 	reg  [7:0] cd_req;
 
 	cd_get <= 0;
-	if(cd_put) cd_req <= cd_req + 1'd1;
+	if(cd_put) begin
+	    cd_req <= cd_req + 1'd1;
+	    $display("HPS - cd_put high, new request from core to HPS");
+    end
 
 	if(~io_enable) begin
-		dout_en <= 0;
+	    dout_en <= 0;
 		io_dout <= 0;
 		byte_cnt <= 0;
 		if(cmd == 'h35) cd_get <= 1;
 	end
 	else if(io_strobe) begin
-		io_dout <= 0;
+	    io_dout <= 0;
 		if(~&byte_cnt) byte_cnt <= byte_cnt + 1'd1;
-		// TODO this is only required for sim...
-		if(byte_cnt >= 1023) byte_cnt <= 0;
-		// Simulate a cd_get from the HPS via ext
-		if(byte_cnt == 1000) io_din <= CD_GET;
-		$display("io_dout %lu", io_dout);
 
-		if(byte_cnt == 0) begin
-			cmd <= io_din;
+        // Debug
+        //cmd_old <= cmd;
+		//if (cmd_old != cmd) begin
+		//    $display("HPS - SUCCESS - 2nd cmd %lu", cmd);
+        //end
+
+        // Debug
+        io_din_old <= io_din;
+        if (io_din_old != io_din) begin
+            $display("HPS - io_din has changed - io_din=%lu", io_din);
+        end
+
+        if(byte_cnt == 0) begin
+            $display("HPS - EXT_BUS_IN=%lu", EXT_BUS_IN);
+            $display("HPS - byte_cnt 0, io_din=%lu", io_din);
+
+            cmd <= io_din;
 			dout_en <= (io_din >= EXT_CMD_MIN && io_din <= EXT_CMD_MAX);
 			if(io_din == CD_GET) io_dout <= cd_req;
 		end else begin
 			case(cmd)
 				CD_GET: begin
-                    if(!byte_cnt[9:3]) begin
+				    if(!byte_cnt[9:3]) begin
+                        $display("HPS - io_dout is going out - io_dout=%lu", io_dout);
                         case(byte_cnt[2:0])
 							1: io_dout <= cd_in[15:0];
 							2: io_dout <= cd_in[31:16];
@@ -141,8 +163,8 @@ always @(posedge sys_clk) begin
     //  Fetch next sector
     next_sector_req_old <= next_sector_req;
     if (!next_sector_req_old && next_sector_req) begin
-        $display("Next sector req going to cd_in");
-        cd_in  <= { 16'h36 };
+        $display("HPS - Next sector req going to cd_in");
+        cd_in  <= { 16'h37 };
         cd_put <= 1;
     end
 
@@ -161,26 +183,54 @@ end
 reg sync_perform_debug_test = 0;
 reg ack_perform_debug_test = 0;
 reg debug_test = 0;
+
+reg sync_perform_io_strobe = 0;
+reg ack_perform_io_strobe = 0;
+reg force_io_strobe = 0;
+
 // Fast clock
 always @(posedge mem_clk) begin
-    if (perform_debug_test == 1) begin
-        $display("Got the message in ext");
+    if (perform_debug_test) begin
+        $display("HPS - Got the debug trigger message in ext");
         sync_perform_debug_test <= 1;
     end
 
     if (ack_perform_debug_test) begin
         sync_perform_debug_test <= 0;
     end
+
+    if (perform_io_strobe) begin
+        $display("HPS - Got external io strobe in ext");
+        sync_perform_io_strobe <= 1;
+    end
+
+    if (ack_perform_io_strobe) begin
+        sync_perform_io_strobe <= 0;
+    end
 end
 // Slow clock
 always @(posedge sys_clk) begin
     if (!ack_perform_debug_test && sync_perform_debug_test) begin
-        $display("sync got the message, crossing clocks now");
+        $display("HPS - sync got the test trigger message, crossing clocks now");
         debug_test <= 1;
         ack_perform_debug_test <= 1;
     end else if (ack_perform_debug_test) begin
         debug_test <= 0;
         ack_perform_debug_test <= 0;
+    end
+    if (!ack_perform_io_strobe && sync_perform_io_strobe) begin
+        $display("HPS - synchroniser resetting byte_cnt to 0 and forcing io_strobe high, io_din=%lu", io_din);
+        //io_din_backup <= io_din;
+        byte_cnt <= 0;
+        $display("HPS - byte_cnt=%lu", byte_cnt);
+        $display("HPS - should be high - io_enable=%lu", io_enable);
+        $display("HPS - should be low - io_strobe=%lu", force_io_strobe);
+        force_io_strobe <= 1;
+        $display("HPS - force_io_strobe=%lu", force_io_strobe);
+        ack_perform_io_strobe <= 1;
+    end else if (ack_perform_io_strobe) begin
+        //force_io_strobe <= 0;
+        ack_perform_io_strobe <= 0;
     end
 end
 
@@ -208,10 +258,10 @@ always @(posedge sys_clk) begin
         stream_byte_index <= 0;
         stream_data <= 0;
         stream_valid <= 1'b0;
-        $display("reset player");
+        $display("HPS - reset player");
         is_playing <= 0;
     end else if (~debug_test_old && debug_test) begin
-        $display("playing stream");
+        $display("HPS - playing stream");
         is_playing <= 1;
     end else if (~mpeg2_busy) begin
         if (is_playing) begin
@@ -247,7 +297,7 @@ always @(posedge sys_clk) begin
         // TODO this overflow might come in at mem clk speed
         if (~mpeg_fifo_wr_overflow && is_playing && stream_byte_index < mpeg2_fifo_sector_limit && next_sector_req == 0) begin
             // Add the sector to our counts
-            $display("Requesting sector");
+            $display("HPS - Requesting sector");
             stream_byte_index <= stream_byte_index + sector_size;
             next_sector_req <= 1;
         end else if (next_sector_req == 1) begin
@@ -265,7 +315,6 @@ wire        mpeg_fifo_wr_overflow;
 wire        mpeg_fifo_wr_almost_full;
 wire        mpeg_fifo_rd_empty;
 wire        mpeg_fifo_rd_valid;
-
 
 // Dta_width squared gives you fifo size.. need to determine if that's bytes or kilobytes
 fifo_dc

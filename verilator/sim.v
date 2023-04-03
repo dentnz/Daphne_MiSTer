@@ -30,7 +30,10 @@ module top(
     led6,
     stream_dat_count,
     EXT_BUS,
-    perform_debug_test
+    EXT_BUS_IN,
+    EXT_BUS_OUT,
+    perform_debug_test,
+    perform_io_strobe
 );
     input clk_sys;
     input reset;
@@ -48,7 +51,9 @@ module top(
 
     output led5;
     output led6;
-    output [35:0] EXT_BUS;
+    inout  [35:0] EXT_BUS;
+    input  [35:0] EXT_BUS_IN;
+    output [35:0] EXT_BUS_OUT;
 
     output [15:0] AUDIO_L;
     output [15:0] AUDIO_R;
@@ -70,6 +75,7 @@ module top(
     input reg [31:0] joystick_3;
     input reg menu;
     input reg perform_debug_test;
+    input reg perform_io_strobe;
 
 ////////////////////////////  HPS I/O  //////////////////////////////////
 
@@ -115,19 +121,29 @@ ripple_clock_divider clk_divider(
 wire pixel_en;
 
 reg perform_debug_test_out = 0;
+reg perform_io_strobe_out = 0;
 // Clk_sys here is actually going to become mem_clk, since it's the fastest of the three
 always @(posedge clk_sys) begin
     reg perform_debug_test_old;
+    reg perform_io_strobe_old;
 
     if (reset) begin
         perform_debug_test_old <= 0;
+        perform_io_strobe_old <= 0;
         perform_debug_test_out <= 0;
+        perform_io_strobe_out <= 0;
     end else begin
         perform_debug_test_old <= perform_debug_test;
+        perform_io_strobe_old <= perform_io_strobe;
         perform_debug_test_out <= 0;
+        perform_io_strobe_out <= 0;
         if (~perform_debug_test_old && perform_debug_test) begin
-            $display("trigger at sim");
+            $display("SIM - debug trigger at first synchroniser");
             perform_debug_test_out <= 1;
+        end
+        if (~perform_io_strobe_old && perform_io_strobe) begin
+            $display("SIM - io strobe trigger at first synchroniser");
+            perform_io_strobe_out <= 1;
         end
     end
 end
@@ -141,6 +157,7 @@ daphne_shell daphne_shell_inst(
     .run(1'b1),
 
     .perform_debug_test(perform_debug_test_out),
+    .perform_io_strobe(perform_io_strobe_out),
     //
     // These signals are from the Famicom serial game controller.
     //
@@ -178,6 +195,8 @@ daphne_shell daphne_shell_inst(
 	.led6(led6),
 	.stream_dat_count(stream_dat_count),
 	.EXT_BUS(EXT_BUS),
+	.EXT_BUS_IN(EXT_BUS_IN),
+	.EXT_BUS_OUT(EXT_BUS_OUT),
 
     //// 16 bit LPCM audio output
     .audio_dac(AUDIO_L),

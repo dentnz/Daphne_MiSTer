@@ -64,7 +64,13 @@ sim/sim_bus.cpp sim/sim_clock.cpp sim/sim_console.cpp sim/sim_video.cpp sim/sim_
 sim/sim_audio.cpp \
 sim/imgui/imgui_impl_sdl.cpp sim/imgui/imgui_impl_opengl2.cpp \
 sim/imgui/imgui_draw.cpp sim/imgui/imgui_widgets.cpp sim/imgui/imgui_tables.cpp \
-sim/imgui/ImGuiFileDialog.cpp sim/imgui/imgui.cpp sim_main.cpp
+sim/imgui/ImGuiFileDialog.cpp sim/imgui/imgui.cpp sim_main.cpp \
+../cpp/Main_MiSTer/file_io.cpp \
+../cpp/Main_MiSTer/fpga_io.cpp \
+../cpp/Main_MiSTer/hardware.cpp \
+../cpp/Main_MiSTer/spi.cpp \
+../cpp/Main_MiSTer/user_io.cpp \
+../cpp/Main_MiSTer/support/daphne.cpp
 VOUT = obj_dir/Vtop.cpp
 
 all: $(EXE)

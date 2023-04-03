@@ -1,5 +1,6 @@
 #include <verilated.h>
-#include "Vtop.h"
+#include "common.h"
+//#include "Vtop.h"
 
 #include "imgui.h"
 //#include "implot.h"
@@ -96,6 +97,10 @@ double sc_time_stamp() {	// Called by $time in Verilog.
 vluint64_t stream_dat_count = 0;	// count in stream.dat
 vluint64_t testpoint = 0;
 vluint64_t EXT_BUS = 0;
+vluint64_t EXT_BUS_IN = 0;
+vluint64_t EXT_BUS_OUT = 0;
+
+//vluint64_t incoming_command_byte_count = 0;
 
 int clk_sys_freq = 100000000;
 SimClock clk_sys(1);
@@ -112,11 +117,13 @@ void resetSim() {
 	main_time = 0;
 	top->reset = 1;
 	top->EXT_BUS = 0;
+	top->EXT_BUS_IN = 0;
+	top->EXT_BUS_OUT = 0;
 	clk_sys.Reset();
 }
 
 int verilate() {
-
+    static uint8_t polling_finished = 0;
 	if (!Verilated::gotFinish()) {
 
 		// Assert reset during startup
@@ -146,7 +153,6 @@ int verilate() {
 			audio.Clock(top->AUDIO_L, top->AUDIO_R);
 		}
 #endif
-
 		busy_led = top->led5;
 		error_led = top->led6;
 		stream_dat_count = top->stream_dat_count;
@@ -161,17 +167,59 @@ int verilate() {
 		if (clk_sys.IsRising()) {
 			main_time++;
             if (main_time == 600000) {
-                printf("trying to test trigger\n");
-                printf("ext bus %lu\n", top->EXT_BUS);
+                printf("SIM - debug test - PLAY the video\n");
+                printf("SIM - ext bus out %lu\n", top->EXT_BUS_OUT);
                 top->perform_debug_test = 1;
             }
-            if (main_time > 600000) {
+
+            if (main_time == 600500) {
                 top->perform_debug_test = 0;
+                top->EXT_BUS |= 1UL << 34;
+                top->EXT_BUS_IN |= 1UL << 34;
+                top->EXT_BUS_OUT |= 1UL << 34;
+                printf("SIM - io_enable going high - ext bus in %lu\n", top->EXT_BUS_IN);
             }
 
-            if (main_time == 610000 && main_time < 610002) {
-                printf("ext bus %lu\n", top->EXT_BUS);
+            /*
+            if (main_time == 612000) {
+                // CD_GET, needs to be in bits 16-31
+                top->EXT_BUS_IN = 52;
+                top->EXT_BUS_IN = top->EXT_BUS_IN << 16;
+                top->EXT_BUS_IN |= 1UL << 33;
+                top->EXT_BUS_IN |= 1UL << 34;
+                printf("SIM - ext bus - trying to send CD_GET, io_strobe high, io_enable high - %lu\n", top->EXT_BUS_IN);
             }
+            */
+
+            if (main_time > 612500 && polling_finished == 0) {
+                polling_finished = daphne_poll();
+            }
+
+            /*
+            if (top->EXT_BUS_OUT & (1ULL << 32)) {
+                incoming_command_byte_count++;
+
+                if (incoming_command_byte_count == 4) {
+                    printf("SIM - ext bus - command detected - byte 1 - %lu\n", top->EXT_BUS_OUT);
+                }
+                if (incoming_command_byte_count == 5) {
+                    printf("SIM - ext bus - command detected - byte 2 - %lu\n", top->EXT_BUS_OUT);
+                }
+                if (incoming_command_byte_count == 6) {
+                    printf("SIM - ext bus - command detected - byte 3 - %lu\n", top->EXT_BUS_OUT);
+                }
+
+                if (incoming_command_byte_count == 7) {
+                    // All bytes for incoming command have been captured, close off communications
+                    // Disable io_enable and io_strobe
+                    top->EXT_BUS_OUT &= ~(1UL << 34);
+                    top->EXT_BUS_OUT &= ~(1UL << 33);
+                    top->EXT_BUS_IN &= ~(1UL << 34);
+                    top->EXT_BUS_IN &= ~(1UL << 35);
+                    incoming_command_byte_count = 0;
+                }
+            }
+            */
 		}
 
 		return 1;

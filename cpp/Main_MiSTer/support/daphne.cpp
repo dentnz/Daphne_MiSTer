@@ -1,6 +1,6 @@
-#include "../../file_io.h"
-#include "../../user_io.h"
-#include "../../spi.h"
+#include "../file_io.h"
+#include "../user_io.h"
+#include "../spi.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -16,6 +16,7 @@ static uint8_t buf[1024];
 static char has_cd = 0;
 static fileTYPE f_audio = {};
 
+/*
 static void daphne_send_command(uint64_t cmd)
 {
 	spi_uio_cmd_cont(UIO_CD_SET);
@@ -39,6 +40,7 @@ static int daphne_send_data(fileTYPE *f, int idx)
 
 	return 1;
 }
+*/
 
 /*
 void snes_msu_init(const char* name)
@@ -68,19 +70,25 @@ void snes_msu_init(const char* name)
 }
 */
 
-void daphne_poll(void)
-{
-printf("got to here");
-/*
-	static uint8_t last_req = 255;
-	if (!has_cd) return;
+uint8_t request_latch = 0;
+uint8_t last_req = 255;
+uint8_t req = 255;
 
-	// Detect incoming command via CD_GET (which we are repurposing for MSU1)
-	uint8_t req = spi_uio_cmd_cont(UIO_CD_GET);
+uint8_t daphne_poll(void)
+{
+
+	// TODO Handle this later
+	//if (!has_cd) return;
+
+    req = spi_uio_cmd_cont(UIO_CD_GET);
+
 	if (req != last_req)
 	{
-		last_req = req;
-
+        last_req = req;
+		DisableIO();
+		printf("req finished");
+		return 1;
+        /*
 		uint16_t command = spi_w(0);
 		uint32_t data = spi_w(0);
 		data = (spi_w(0) << 16) | data;
@@ -110,10 +118,12 @@ printf("got to here");
 			msu_send_data(&f_audio, 2);
 			break;
 		}
+		*/
 	}
 	else
 	{
-		DisableIO();
+		//DisableIO();
 	}
-*/
+
+	return 0;
 }

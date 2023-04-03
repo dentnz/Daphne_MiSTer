@@ -47,15 +47,18 @@ module daphne_shell (
     output [15:0] audio_dac,
 
     // Digital volume control with range 0 - 11.
-    input [3:0] digital_volume_control,
+    input   [3:0] digital_volume_control,
 
     // Signals from user interface to select program to load
     input loader_go,  // true when user select load
     input [3:0] loader_program_select,
     output loader_active, // true when loader is active
 
-    output [35:0] EXT_BUS,
-    input         perform_debug_test
+    inout  [35:0] EXT_BUS,
+    input  [35:0] EXT_BUS_IN,
+    output [35:0] EXT_BUS_OUT,
+    input         perform_debug_test,
+    input         perform_io_strobe
 );
 
 // The Gigatron loader operates in passthrough mode for
@@ -126,7 +129,10 @@ daphne daphne_inst(
     // Digital volume control with range 0 - 11.
     .digital_volume_control(digital_volume_control),
     .perform_debug_test(perform_debug_test),
-    .EXT_BUS(EXT_BUS)
+    .perform_io_strobe(perform_io_strobe),
+    .EXT_BUS(EXT_BUS),
+    .EXT_BUS_IN(EXT_BUS_IN),
+    .EXT_BUS_OUT(EXT_BUS_OUT)
 );
 
 endmodule

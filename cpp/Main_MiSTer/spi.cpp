@@ -1,3 +1,4 @@
+#include "../../verilator/common.h"
 #include "spi.h"
 //#include "hardware.h"
 //#include "fpga_io.h"
@@ -11,6 +12,7 @@
 void EnableFpga()
 {
 //	fpga_spi_en(SSPI_FPGA_EN, 1);
+
 }
 
 void DisableFpga()
@@ -44,12 +46,22 @@ void DisableOsd()
 
 void EnableIO()
 {
+    printf("Main_MiSTeR -  enable IO\n");
 //	fpga_spi_en(SSPI_IO_EN, 1);
+    // Mock the IO Enable bit, bit 34
+    top->EXT_BUS |= 1UL << 34;
+    top->EXT_BUS_IN |= 1UL << 34;
+    top->EXT_BUS_OUT |= 1UL << 34;
 }
 
 void DisableIO()
 {
+    printf("Main_MiSTeR -  disable IO\n");
 //	fpga_spi_en(SSPI_IO_EN, 0);
+    // Mock disabling the IO Enable bit
+    top->EXT_BUS &= ~(1UL << 34);
+    top->EXT_BUS_IN &= ~(1UL << 34);
+    top->EXT_BUS_OUT &= ~(1UL << 34);
 }
 
 uint32_t spi32_w(uint32_t parm)
@@ -103,9 +115,55 @@ void spi_uio_cmd32_cont(uint8_t cmd, uint32_t parm)
 }
 
 /* User_io related SPI functions */
+vluint64_t incoming_command_byte_count = 0;
+uint16_t last_command = 255;
+uint16_t last_command_data1 = 0;
+uint16_t last_command_data2 = 0;
+
+/**
+ * @param cmd - command you want to send to the FPGA
+ * @returns req - request result, 255 is "no request result"
+ */
 uint16_t spi_uio_cmd_cont(uint16_t cmd)
 {
-//	EnableIO();
+	EnableIO();
+
+    if (top->EXT_BUS_OUT & (1ULL << 32)) {
+        incoming_command_byte_count++;
+
+        if (incoming_command_byte_count == 4) {
+            last_command = top->EXT_BUS_OUT;
+            printf("Main_MiSTer - command detected - byte 1 - %lu\n", top->EXT_BUS_OUT);
+        }
+        if (incoming_command_byte_count == 5) {
+            printf("Main_MiSTer - command detected - byte 2 - %lu\n", top->EXT_BUS_OUT);
+        }
+        if (incoming_command_byte_count == 6) {
+            printf("Main_MiSTer - command detected - byte 3 - %lu\n", top->EXT_BUS_OUT);
+            incoming_command_byte_count = 0;
+            DisableIO();
+            // Command is in the first byte
+            return last_command;
+        }
+
+        if (incoming_command_byte_count == 7) {
+            // All bytes for incoming command have been captured, close off communications
+            // Disable io_enable and io_strobe
+            //top->EXT_BUS_OUT &= ~(1UL << 34);
+            //top->EXT_BUS_OUT &= ~(1UL << 33);
+            //top->EXT_BUS_IN &= ~(1UL << 34);
+            //top->EXT_BUS_IN &= ~(1UL << 35);
+        }
+
+        return 255;
+    }
+
+    top->EXT_BUS_IN = cmd;
+    top->EXT_BUS_IN = top->EXT_BUS_IN << 16;
+    top->EXT_BUS_IN |= 1UL << 33;
+    top->EXT_BUS_IN |= 1UL << 34;
+
+    return 255;
 //	return spi_w(cmd);
 }
 

@@ -23,6 +23,7 @@ module vldp(
 
     // Should be synced to sys_clk
     input               perform_debug_test,
+    input               perform_io_strobe,
 
     output   reg        h_sync,
     output   reg        v_sync,
@@ -33,7 +34,9 @@ module vldp(
     output 	 reg  [7:0] b,
 
     output   reg [31:0] stream_dat_count,
-    output   reg [35:0] EXT_BUS
+    inout    reg [35:0] EXT_BUS,
+    input    reg [35:0] EXT_BUS_IN,
+    output   reg [35:0] EXT_BUS_OUT
 );
 
 `define MAX_STREAM_LENGTH 4194559
@@ -91,7 +94,10 @@ hps_ext hps_ext_inst(
     .reg_dta_in(reg_dta_in),
     .reg_wr_en(reg_wr_en),
     .perform_debug_test(perform_debug_test),
-    .EXT_BUS(EXT_BUS)
+    .perform_io_strobe(perform_io_strobe),
+    .EXT_BUS(EXT_BUS),
+    .EXT_BUS_IN(EXT_BUS_IN),
+    .EXT_BUS_OUT(EXT_BUS_OUT)
 );
 /* verilator lint_on PINMISSING */
 
