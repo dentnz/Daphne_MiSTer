@@ -9,6 +9,9 @@
 #include <inttypes.h>
 #include "file_io.h"
 
+// This is needed to access top
+#include "../../verilator/common.h"
+
 #define UIO_STATUS      0x00
 #define UIO_BUT_SW      0x01
 

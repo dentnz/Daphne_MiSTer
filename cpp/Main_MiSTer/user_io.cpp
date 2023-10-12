@@ -1721,10 +1721,10 @@ int process_ss(const char *rom_name, int enable)
 
 void user_io_set_index(unsigned char index)
 {
-	EnableFpga();
-	spi8(FIO_FILE_INDEX);
-	spi8(index);
-	DisableFpga();
+	//EnableFpga();
+	//spi8(FIO_FILE_INDEX);
+	//spi8(index);
+	//DisableFpga();
 }
 
 /*
@@ -1739,23 +1739,23 @@ void user_io_set_aindex(uint16_t index)
 
 void user_io_set_download(unsigned char enable, int addr)
 {
-	EnableFpga();
-	spi8(FIO_FILE_TX);
-	spi8(enable ? 0xff : 0);
-	if (enable && addr)
-	{
-		spi_w(addr);
-		spi_w(addr >> 16);
-	}
-	DisableFpga();
+	//EnableFpga();
+	//spi8(FIO_FILE_TX);
+	//spi8(enable ? 0xff : 0);
+	//if (enable && addr)
+	//{
+	//	spi_w(addr);
+	//	spi_w(addr >> 16);
+	//}
+	//DisableFpga();
 }
 
 void user_io_file_tx_data(const uint8_t *addr, uint32_t len)
 {
-	EnableFpga();
-	spi8(FIO_FILE_TX_DAT);
-	spi_write(addr, len, fio_size);
-	DisableFpga();
+	//EnableFpga();
+	//spi8(FIO_FILE_TX_DAT);
+	//spi_write(addr, len, fio_size);
+	//DisableFpga();
 }
 
 void user_io_set_upload(unsigned char enable, int addr)

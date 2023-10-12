@@ -170,14 +170,15 @@ int verilate() {
                 printf("SIM - debug test - PLAY the video\n");
                 printf("SIM - ext bus out %lu\n", top->EXT_BUS_OUT);
                 top->perform_debug_test = 1;
+                daphne_init();
             }
 
             if (main_time == 600500) {
                 top->perform_debug_test = 0;
-                top->EXT_BUS |= 1UL << 34;
-                top->EXT_BUS_IN |= 1UL << 34;
-                top->EXT_BUS_OUT |= 1UL << 34;
-                printf("SIM - io_enable going high - ext bus in %lu\n", top->EXT_BUS_IN);
+//                top->EXT_BUS |= 1UL << 34;
+//                top->EXT_BUS_IN |= 1UL << 34;
+//                top->EXT_BUS_OUT |= 1UL << 34;
+//                printf("SIM - io_enable going high - ext bus in %lu\n", top->EXT_BUS_IN);
             }
 
             /*

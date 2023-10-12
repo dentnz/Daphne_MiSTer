@@ -44,9 +44,16 @@ void DisableOsd()
 //	fpga_spi_en(SSPI_OSD_EN | SSPI_IO_EN | SSPI_FPGA_EN, 0);
 }
 
+uint8_t io_enabled = 0;
+
 void EnableIO()
 {
+    if (io_enabled == 1) {
+        return;
+    }
+
     printf("Main_MiSTeR -  enable IO\n");
+    io_enabled = 1;
 //	fpga_spi_en(SSPI_IO_EN, 1);
     // Mock the IO Enable bit, bit 34
     top->EXT_BUS |= 1UL << 34;
@@ -56,7 +63,11 @@ void EnableIO()
 
 void DisableIO()
 {
+    if (io_enabled == 0) {
+        return;
+    }
     printf("Main_MiSTeR -  disable IO\n");
+    io_enabled = 0;
 //	fpga_spi_en(SSPI_IO_EN, 0);
     // Mock disabling the IO Enable bit
     top->EXT_BUS &= ~(1UL << 34);
@@ -141,18 +152,7 @@ uint16_t spi_uio_cmd_cont(uint16_t cmd)
         if (incoming_command_byte_count == 6) {
             printf("Main_MiSTer - command detected - byte 3 - %lu\n", top->EXT_BUS_OUT);
             incoming_command_byte_count = 0;
-            DisableIO();
-            // Command is in the first byte
             return last_command;
-        }
-
-        if (incoming_command_byte_count == 7) {
-            // All bytes for incoming command have been captured, close off communications
-            // Disable io_enable and io_strobe
-            //top->EXT_BUS_OUT &= ~(1UL << 34);
-            //top->EXT_BUS_OUT &= ~(1UL << 33);
-            //top->EXT_BUS_IN &= ~(1UL << 34);
-            //top->EXT_BUS_IN &= ~(1UL << 35);
         }
 
         return 255;

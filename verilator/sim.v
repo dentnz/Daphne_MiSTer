@@ -29,6 +29,7 @@ module top(
     led5,
     led6,
     stream_dat_count,
+    sd_2,
     EXT_BUS,
     EXT_BUS_IN,
     EXT_BUS_OUT,
@@ -76,6 +77,7 @@ module top(
     input reg menu;
     input reg perform_debug_test;
     input reg perform_io_strobe;
+    input reg sd_2;
 
 ////////////////////////////  HPS I/O  //////////////////////////////////
 
